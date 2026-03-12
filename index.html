@@ -541,11 +541,12 @@
         area.innerHTML = `<h1 style="font-family:'Archivo Black';">SUIL ARCHIVE</h1><p>DATE: ${selDate}</p><hr><h2>BOOK: ${db.book.title}</h2><p>AUTHOR: ${db.book.author}</p>`;
         html2pdf().from(area).save(`SUIL_${selDate}.pdf`);
     }
+</script>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // 1. 제공해주신 Firebase 설정값
   const firebaseConfig = {
     apiKey: "AIzaSyBDjddQGsY94d1r7zCdKDDig_8ZtV2ZmBE",
     authDomain: "suilbook.firebaseapp.com",
@@ -556,11 +557,8 @@
     measurementId: "G-VWPW6YNBNL"
   };
 
-  // 2. Firebase 초기화
   const app = initializeApp(firebaseConfig);
   const firestore = getFirestore(app);
-
-  // 전역 변수로 할당하여 기존 함수에서 접근 가능하게 설정 (선택 사항)
   window.db_firestore = firestore;
   
   console.log("Firebase가 성공적으로 연결되었습니다.");
