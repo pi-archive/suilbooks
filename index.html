@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SUIL BOOKSTORE | OFFICIAL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;700;900&family=Syncopate:wght@700&display=swap');
+        
+        :root { 
+            --blue: #007AFF; --pink: #FF2D55; --yellow: #D1FF00; --purple: #AF52DE; --orange: #FF9500; --green: #34C759;
+            --white: #ffffff; --black: #000000; --bg: #ffffff; --card: #ffffff; --border: #000000;
+        }
+
+        body.dark-mode { 
+            --white: #000000; --black: #ffffff; --bg: #000000; --card: #121212; --border: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--black); transition: 0.2s; overflow-x: hidden; scroll-behavior: smooth; }
+
+        /* --- 입장 페이지 --- */
+        #login-overlay { position: fixed; inset: 0; background: var(--yellow); z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; border: 15px solid var(--black); }
+        .login-sticker { position: absolute; font-family: 'Archivo Black'; font-size: 8vw; color: rgba(0,0,0,0.1); z-index: -1; line-height: 1; text-transform: uppercase; white-space: nowrap; pointer-events: none; }
+        #login-overlay h1 { font-family: 'Archivo Black'; font-size: 14vw; line-height: 1.1; letter-spacing: -2px; text-transform: uppercase; margin-bottom: 30px; text-align: center; color: var(--black); z-index: 10; word-break: keep-all; }
+        .login-box { background: var(--white); border: 8px solid var(--black); padding: 35px; width: 100%; max-width: 450px; z-index: 10; transition: 0.3s; }
+        .login-box:focus-within { border-color: var(--blue); box-shadow: 0 0 30px var(--blue); }
+        #user-name-input { width: 100%; border: none; border-bottom: 8px solid var(--black); padding: 12px 0; font-size: 2.2rem; font-weight: 900; background: transparent; outline: none; text-align: center; border-radius: 0; text-transform: uppercase; }
+
+        /* --- 상단 탭 메뉴 --- */
+        .tab-menu { display: flex; border-bottom: 4px solid var(--black); background: var(--white); position: sticky; top: 0; z-index: 500; }
+        .tab-btn { flex: 1; padding: 20px; font-family: 'Syncopate'; font-weight: 900; font-size: 14px; border: none; background: none; cursor: pointer; text-transform: uppercase; transition: 0.3s; border-right: 2px solid var(--black); }
+        .tab-btn:last-child { border-right: none; }
+        .tab-btn.active { background: var(--black); color: var(--white); }
+
+        /* --- 네비게이션 & 헤더 --- */
+        .top-nav { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: var(--bg); border-bottom: 4px solid var(--black); }
+        header { padding: 60px 20px; text-align: left; background: var(--bg); border-bottom: 4px solid var(--black); }
+        .main-title { font-size: 22vw; font-family: 'Archivo Black'; letter-spacing: -8px; line-height: 0.8; text-transform: uppercase; color: var(--black); cursor: pointer; }
+
+        /* --- 캘린더 --- */
+        .cal-header { display: flex; font-family: 'Syncopate'; font-size: 14px; font-weight: 900; border-bottom: 4px solid var(--black); background: var(--white); }
+        .cal-header span { flex: 1; padding: 20px; text-align: center; border-right: 4px solid var(--black); cursor: pointer; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--black); gap: 3px; border-bottom: 5px solid var(--black); }
+        .day { aspect-ratio: 0.8; background: var(--white); display: flex; align-items: flex-end; justify-content: flex-start; padding: 8px; font-size: 14px; font-weight: 900; cursor: pointer; position: relative; overflow: hidden; }
+        .day img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+        .day span { z-index: 1; background: var(--black); color: var(--white); padding: 3px 6px; font-size: 10px; }
+
+        /* --- 라이브러리 책장 --- */
+        #library-view { display: none; padding: 40px 20px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px; background: var(--bg); min-height: 80vh; }
+        .shelf-item { aspect-ratio: 2/3; background: #eee; border: 4px solid var(--black); position: relative; cursor: pointer; overflow: hidden; transition: 0.3s; }
+        .shelf-item:hover { transform: translateY(-10px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .shelf-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* --- 모달 --- */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 20000; display: none; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content { background: var(--white); border: 10px solid var(--black); width: 100%; max-width: 500px; padding: 40px; position: relative; }
+        .close-modal { position: absolute; top: 10px; right: 15px; font-size: 30px; font-weight: 900; cursor: pointer; }
+
+        /* --- 섹션 리스트 & 벤토 --- */
+        .sec { border-bottom: 4px solid var(--black); background: var(--white); }
+        .sec-trigger { width: 100%; padding: 50px 20px; background: none; border: none; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .sec-trigger h2 { font-size: 4rem; font-family: 'Archivo Black'; letter-spacing: -4px; text-transform: uppercase; transform: skewX(-5deg); transition: 0.3s; }
+        .sec-content { max-height: 0; overflow: hidden; transition: 0.6s cubic-bezier(0.8, 0, 0.2, 1); background: var(--bg); }
+        .sec.open .sec-content { max-height: 10000px; padding: 45px 20px; border-top: 4px solid var(--black); }
+        .bento { background: var(--card); border: 5px solid var(--black); padding: 35px; margin-bottom: 35px; position: relative; }
+        
+        /* --- 댓글 로직 UI --- */
+        .comment-area { margin-top: 20px; padding-top: 20px; border-top: 2px dashed var(--black); }
+        .cmt-item { margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.03); border-left: 4px solid var(--black); }
+        .reply-item { margin-left: 30px; margin-top: 10px; padding: 8px; background: rgba(0,0,0,0.01); border-left: 4px solid var(--blue); }
+        .owner-ctrl { display: flex; gap: 6px; margin-top: 5px; }
+        .owner-ctrl button { background: none; border: 2px solid var(--black); padding: 3px 8px; font-family: 'Syncopate'; font-size: 8px; font-weight: 900; cursor: pointer; }
+        .cmt-input-row { display: flex; gap: 10px; margin-top: 10px; }
+        .cmt-input-row input { padding: 10px; font-size: 14px; margin-bottom: 0; border-width: 2px; }
+
+        /* --- 입력 UI --- */
+        input, textarea { width: 100%; padding: 22px; border: 5px solid var(--black); font-size: 1.2rem; font-weight: 900; margin-bottom: 20px; outline: none; background: var(--white); color: var(--black); }
+        .btn-main { width: 100%; padding: 25px; background: var(--black); color: var(--white); border: none; font-weight: 900; font-size: 1.5rem; text-transform: uppercase; cursor: pointer; }
+
+        /* --- 플로팅 버튼 라인 --- */
+        .float-wrap { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 15px; z-index: 1000; }
+        .float-btn { width: 75px; height: 75px; border-radius: 50%; background: var(--yellow); border: 5px solid var(--black); font-weight: 900; font-size: 12px; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+        .btn-top { background: var(--blue); color: white; }
+        .btn-pdf { background: var(--pink); color: white; }
+        
+        .tag-qa { background: var(--black); color: var(--white); padding: 4px 8px; font-size: 11px; margin-bottom: 10px; display: inline-block; font-family: 'Syncopate'; }
+    </style>
+</head>
+<body onbeforeunload="clearInputs()">
+
+<div id="login-overlay">
+    <div class="login-sticker" style="top:8%; left:-3%; transform:rotate(-4deg);">DO NOT DISTURB: READING</div>
+    <div class="login-sticker" style="bottom:10%; right:5%; transform:rotate(6deg);">NO WIFI, JUST BOOKS</div>
+    <h1>SUIL<br>BOOKSTORE</h1>
+    <div class="login-box">
+        <input type="text" id="user-name-input" placeholder="WHO ARE YOU?">
+    </div>
+</div>
+
+<div class="top-nav">
+    <div id="online-list">LIVE: </div>
+    <button class="mode-toggle" style="background:var(--black); color:white; padding:8px 15px; font-family:'Syncopate'; font-size:10px; font-weight:900;" onclick="toggleMode()">INVERT</button>
+</div>
+
+<header>
+    <h1 class="main-title" onclick="backToLogin()">SUIL<br>BOOK</h1>
+</header>
+
+<div class="tab-menu">
+    <button class="tab-btn active" id="tab-cal" onclick="switchTab('cal')">CALENDAR</button>
+    <button class="tab-btn" id="tab-lib" onclick="switchTab('lib')">LIBRARY</button>
+</div>
+
+<div id="calendar-view">
+    <div class="cal-header">
+        <span onclick="changeMonth(-1)">← PREV</span>
+        <span id="month-title">MARCH 2026</span>
+        <span onclick="changeMonth(1)">NEXT →</span>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    
+    <div id="archive-view" style="display:none; padding-bottom: 150px; max-width: 650px; margin: 0 auto; padding-top: 50px;">
+        <div class="sec" id="sec-book">
+            <button class="sec-trigger" onclick="toggleSec(this, 'sec-book')"><h2>BOOK</h2></button>
+            <div class="sec-content">
+                <input type="text" class="clear-target" id="b-title" placeholder="TITLE">
+                <input type="text" class="clear-target" id="b-author" placeholder="AUTHOR">
+                <input type="text" class="clear-target" id="b-cover" placeholder="COVER IMAGE URL">
+                <button class="btn-main" onclick="saveBook()" style="background:var(--purple)">DATABASE SYNC</button>
+            </div>
+        </div>
+        <div class="sec" id="sec-feed">
+            <button class="sec-trigger" onclick="toggleSec(this, 'sec-feed')"><h2>FEED</h2></button>
+            <div class="sec-content">
+                <textarea class="clear-target" id="in-review-text" style="height:150px;" placeholder="THOUGHTS..." oninput="countChars(this)"></textarea>
+                <div id="char-counter" style="margin-bottom:25px; font-size:13px; font-weight:900;">WITH SPACE: <b id="c-with-s">0</b> / NO SPACE: <b id="c-no-s">0</b></div>
+                <button class="btn-main" onclick="addItem('reviews')" style="background:var(--orange)">POST TO FEED</button>
+                <div id="grouped-reviews" style="margin-top:40px;"></div>
+            </div>
+        </div>
+        <div class="sec" id="sec-talk">
+            <button class="sec-trigger" onclick="toggleSec(this, 'sec-talk')"><h2>TALK</h2></button>
+            <div class="sec-content">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                    <button id="btn-q" class="btn-main" onclick="setQA('질문')" style="background:var(--green)">QUESTION</button>
+                    <button id="btn-r" class="btn-main" onclick="setQA('추천')" style="background:var(--black)">LINK_REC</button>
+                </div>
+                <textarea class="clear-target" id="in-qa-text" placeholder="CONTENT..."></textarea>
+                <input type="text" class="clear-target" id="in-qa-link" placeholder="🔗 URL" style="display:none;">
+                <button class="btn-main" onclick="addItem('qas')" style="background:var(--blue)">UPLOAD DATA</button>
+                <div id="grouped-qas" style="margin-top:40px;"></div>
+            </div>
+        </div>
+        <div class="sec" id="sec-vote">
+            <button class="sec-trigger" onclick="toggleSec(this, 'sec-vote')"><h2>VOTE</h2></button>
+            <div class="sec-content">
+                <input type="text" class="clear-target" id="v-title" placeholder="VOTE TITLE">
+                <input type="text" class="clear-target" id="v-author" placeholder="AUTHOR">
+                <textarea class="clear-target" id="v-intro" placeholder="DESCRIPTION"></textarea>
+                <button class="btn-main" onclick="addVote()" style="background:var(--pink)">OPEN VOTE</button>
+                <div id="vote-list" style="margin-top:40px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="library-view"></div>
+
+<div id="book-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">×</span>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<div class="float-wrap">
+    <button class="float-btn btn-top" onclick="window.scrollTo({top:0, behavior:'smooth'})">TOP</button>
+    <button class="float-btn btn-pdf" onclick="exportPDF()">PDF</button>
+    <button class="float-btn" onclick="finalSave()">SAVE</button>
+</div>
+
+<div id="pdf-export-area" style="position: absolute; left: -9999px;"></div>
+
+<script>
+    let me = ""; let selDate = ""; let curQA = "질문"; let today = new Date();
+    let curY = today.getFullYear(), curM = today.getMonth();
+    let db = { book:{}, reviews:[], qas:[], votes:[] };
+
+    function clearInputs() {
+        document.querySelectorAll('.clear-target').forEach(el => el.value = "");
+        if(document.getElementById('c-with-s')) {
+            document.getElementById('c-with-s').innerText = "0";
+            document.getElementById('c-no-s').innerText = "0";
+        }
+    }
+
+    document.getElementById('user-name-input').addEventListener('keypress', (e) => {
+        if(e.key === 'Enter' && e.target.value) {
+            me = e.target.value.toUpperCase();
+            document.getElementById('login-overlay').style.display='none';
+            renderCal(); track();
+        }
+    });
+
+    function backToLogin() {
+        if(confirm("입장 화면으로 돌아가시겠습니까? 작성 중인 내용은 저장되지 않습니다.")) {
+            me = "";
+            clearInputs();
+            document.getElementById('login-overlay').style.display='flex';
+            document.getElementById('user-name-input').value = "";
+            document.getElementById('archive-view').style.display='none';
+            switchTab('cal');
+        }
+    }
+
+    function track() {
+        let list = JSON.parse(localStorage.getItem('suil_on_v33') || "{}");
+        list[me] = Date.now();
+        localStorage.setItem('suil_on_v33', JSON.stringify(list));
+        const box = document.getElementById('online-list');
+        box.innerHTML = 'LIVE: ';
+        Object.keys(list).forEach(u => {
+            if(Date.now() - list[u] < 60000) box.innerHTML += `<span style="background:var(--black); color:var(--white); padding:2px 8px; margin-right:5px; font-size:9px;">${u}</span>`;
+        });
+    }
+    setInterval(track, 10000);
+
+    function toggleMode() { document.body.classList.toggle('dark-mode'); }
+
+    function countChars(obj) {
+        const val = obj.value;
+        document.getElementById('c-with-s').innerText = val.length;
+        document.getElementById('c-no-s').innerText = val.replace(/\s/g, "").length;
+    }
+
+    function switchTab(type) {
+        const calView = document.getElementById('calendar-view');
+        const libView = document.getElementById('library-view');
+        const calBtn = document.getElementById('tab-cal');
+        const libBtn = document.getElementById('tab-lib');
+
+        if(type === 'cal') {
+            calView.style.display = 'block';
+            libView.style.display = 'none';
+            calBtn.classList.add('active');
+            libBtn.classList.remove('active');
+        } else {
+            calView.style.display = 'none';
+            libView.style.display = 'grid';
+            calBtn.classList.remove('active');
+            libBtn.classList.add('active');
+            renderLibrary();
+        }
+    }
+
+    function renderLibrary() {
+        const lib = document.getElementById('library-view');
+        lib.innerHTML = '';
+        let items = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('suil_v33_')) {
+                const data = JSON.parse(localStorage.getItem(key));
+                if (data && data.book && data.book.cover) {
+                    items.push({ key: key, data: data });
+                }
+            }
+        }
+        items.sort((a, b) => b.key.localeCompare(a.key));
+        if (items.length === 0) {
+            lib.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 100px 20px; font-family: 'Archivo Black';">
+                <p style="font-size: 2rem; opacity: 0.2;">SHELF IS EMPTY</p>
+                <p style="font-size: 14px; margin-top: 20px;">CALENDAR에서 책 표지를 먼저 등록하세요.</p>
+            </div>`;
+            return;
+        }
+        items.forEach(itemObj => {
+            const div = document.createElement('div');
+            div.className = 'shelf-item';
+            div.innerHTML = `<img src="${itemObj.data.book.cover}" alt="book">`;
+            div.onclick = () => {
+                const rawDate = itemObj.key.replace('suil_v33_', '');
+                const dateParts = rawDate.split('-');
+                curY = parseInt(dateParts[0]);
+                curM = parseInt(dateParts[1]) - 1;
+                switchTab('cal');
+                renderCal();
+                selDate = rawDate;
+                loadData(rawDate);
+                document.getElementById('archive-view').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('sec-book').scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            };
+            lib.appendChild(div);
+        });
+    }
+
+    function renderCal() {
+        const grid = document.getElementById('cal-grid'); grid.innerHTML = '';
+        const first = new Date(curY, curM, 1).getDay();
+        const last = new Date(curY, curM+1, 0).getDate();
+        document.getElementById('month-title').innerText = `${new Date(curY, curM).toLocaleString('en-US',{month:'long'})} ${curY}`;
+        for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
+        for(let i=1; i<=last; i++) {
+            const key = `${curY}-${curM+1}-${i}`;
+            const day = document.createElement('div'); day.className = 'day';
+            const saved = localStorage.getItem('suil_v33_'+key);
+            if(saved) {
+                const p = JSON.parse(saved);
+                if(p.book && p.book.cover) day.innerHTML = `<img src="${p.book.cover}">`;
+            }
+            day.innerHTML += `<span>${i}</span>`;
+            day.onclick = () => { 
+                selDate=key; 
+                loadData(key); 
+                document.getElementById('archive-view').style.display='block';
+                document.getElementById('sec-book').scrollIntoView({ behavior: 'smooth' });
+            };
+            grid.appendChild(day);
+        }
+    }
+
+    function setQA(cat) { 
+        curQA = cat; 
+        document.getElementById('in-qa-link').style.display = cat==='추천'?'block':'none';
+    }
+
+    function addItem(type) {
+        const inputId = type === 'reviews' ? 'in-review-text' : 'in-qa-text';
+        const txt = document.getElementById(inputId).value;
+        if(!txt) return;
+        db[type].push({ id: Date.now(), user: me, text: txt, link: type==='qas' ? document.getElementById('in-qa-link').value : null, cat: type==='qas' ? curQA : null, comments: [] });
+        document.getElementById(inputId).value = "";
+        if(type === 'reviews') { document.getElementById('c-with-s').innerText = "0"; document.getElementById('c-no-s').innerText = "0"; }
+        renderAll(); finalSave();
+    }
+
+    function addComment(type, itemIdx) {
+        const input = document.getElementById(`cmt-input-${type}-${itemIdx}`);
+        if(!input.value) return;
+        if(!db[type][itemIdx].comments) db[type][itemIdx].comments = [];
+        db[type][itemIdx].comments.push({ id: Date.now(), user: me, text: input.value, replies: [] });
+        input.value = "";
+        renderAll(); finalSave();
+    }
+
+    function addReply(type, itemIdx, cmtIdx) {
+        const input = document.getElementById(`reply-input-${type}-${itemIdx}-${cmtIdx}`);
+        if(!input.value) return;
+        db[type][itemIdx].comments[cmtIdx].replies.push({ id: Date.now(), user: me, text: input.value });
+        input.value = "";
+        renderAll(); finalSave();
+    }
+
+    function renderAll() {
+        renderGrouped('reviews', 'grouped-reviews');
+        renderGrouped('qas', 'grouped-qas');
+        renderVotes();
+    }
+
+    function renderGrouped(type, containerId) {
+        const con = document.getElementById(containerId); con.innerHTML = "";
+        const groups = db[type].reduce((acc, item) => { if(!acc[item.user]) acc[item.user]=[]; acc[item.user].push(item); return acc; }, {});
+        
+        Object.keys(groups).forEach(user => {
+            const div = document.createElement('div'); div.className = 'bento';
+            div.innerHTML = `<div class="bento-header"><span>USER: ${user}</span><span style="color:var(--blue)">${type.toUpperCase()}</span></div>
+                <div class="bento-body">${groups[user].map(item => {
+                    const realIdx = db[type].indexOf(item);
+                    let commentHTML = `
+                        <div class="comment-area">
+                            ${(item.comments || []).map((cmt, cmtIdx) => `
+                                <div class="cmt-item">
+                                    <span class="cmt-user">${cmt.user}</span>
+                                    <span class="cmt-text">${cmt.text}</span>
+                                    <div class="owner-ctrl" style="margin-bottom:10px;">
+                                        ${cmt.user === me ? `
+                                            <button onclick="editSubItem('${type}', 'comments', ${realIdx}, ${cmtIdx})">EDIT</button>
+                                            <button class="btn-del" onclick="deleteSubItem('${type}', 'comments', ${realIdx}, ${cmtIdx})">DEL</button>
+                                        ` : ''}
+                                    </div>
+                                    ${(cmt.replies || []).map((reply, repIdx) => `
+                                        <div class="reply-item">
+                                            <span class="cmt-user" style="color:var(--blue)">RE: ${reply.user}</span>
+                                            <span class="cmt-text">${reply.text}</span>
+                                            ${reply.user === me ? `
+                                                <div class="owner-ctrl">
+                                                    <button onclick="editSubItem('${type}', 'replies', ${realIdx}, ${cmtIdx}, ${repIdx})">EDIT</button>
+                                                    <button class="btn-del" onclick="deleteSubItem('${type}', 'replies', ${realIdx}, ${cmtIdx}, ${repIdx})">DEL</button>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `).join('')}
+                                    <div class="cmt-input-row">
+                                        <input type="text" id="reply-input-${type}-${realIdx}-${cmtIdx}" placeholder="REPLY...">
+                                        <button class="btn-cmt" onclick="addReply('${type}', ${realIdx}, ${cmtIdx})">SEND</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            <div class="cmt-input-row">
+                                <input type="text" id="cmt-input-${type}-${realIdx}" placeholder="ADD COMMENT...">
+                                <button class="btn-cmt" style="background:var(--blue)" onclick="addComment('${type}', ${realIdx})">COMMENT</button>
+                            </div>
+                        </div>`;
+
+                    return `
+                    <div style="padding:20px 0; border-bottom:3px solid var(--black);">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div style="flex:1;">
+                                ${item.cat ? `<span class="tag-qa">${item.cat}</span><br>` : ''}
+                                <span style="display:block; margin-bottom:10px;">${item.text}</span>
+                                ${item.link ? `<a href="${item.link}" target="_blank" class="link-style">GO TO LINK →</a>` : ''}
+                            </div>
+                            ${item.user === me ? `
+                            <div class="owner-ctrl">
+                                <button onclick="editItem('${type}', ${realIdx})">EDIT</button>
+                                <button class="btn-del" onclick="deleteItem('${type}', ${realIdx})">DEL</button>
+                            </div>` : ''}
+                        </div>
+                        ${commentHTML}
+                    </div>`;
+                }).join('')}</div>`;
+            con.appendChild(div);
+        });
+    }
+
+    function editItem(type, idx) {
+        if(db[type][idx].user !== me) return;
+        const newText = prompt("CONTENT 수정:", db[type][idx].text);
+        if(newText !== null && newText.trim() !== "") {
+            db[type][idx].text = newText;
+            if(type === 'qas' && db[type][idx].link !== null) {
+                const newLink = prompt("URL 수정 (필요 없으면 비우세요):", db[type][idx].link);
+                db[type][idx].link = newLink;
+            }
+            renderAll(); finalSave();
+        }
+    }
+
+    function deleteItem(type, idx) {
+        if(db[type][idx].user !== me) return;
+        if(confirm("정말 삭제하시겠습니까?")) {
+            db[type].splice(idx, 1);
+            renderAll(); finalSave();
+        }
+    }
+
+    function editSubItem(type, subType, itemIdx, cIdx, repIdx) {
+        let target;
+        if(subType === 'comments') target = db[type][itemIdx].comments[cIdx];
+        else target = db[type][itemIdx].comments[cIdx].replies[repIdx];
+        
+        if(target.user !== me) return;
+        const newText = prompt("수정할 내용을 입력하세요:", target.text);
+        if(newText) { target.text = newText; renderAll(); finalSave(); }
+    }
+
+    function deleteSubItem(type, subType, itemIdx, cIdx, repIdx) {
+        if(subType === 'comments') {
+            if(db[type][itemIdx].comments[cIdx].user === me && confirm("댓글을 삭제하시겠습니까?")) {
+                db[type][itemIdx].comments.splice(cIdx, 1);
+            }
+        } else {
+            if(db[type][itemIdx].comments[cIdx].replies[repIdx].user === me && confirm("대댓글을 삭제하시겠습니까?")) {
+                db[type][itemIdx].comments[cIdx].replies.splice(repIdx, 1);
+            }
+        }
+        renderAll(); finalSave();
+    }
+
+    function addVote() {
+        const title = document.getElementById('v-title').value;
+        if(!title) return;
+        db.votes.push({ user:me, title:title, author:document.getElementById('v-author').value, intro:document.getElementById('v-intro').value, voters:[] });
+        renderAll(); finalSave();
+    }
+
+    function renderVotes() {
+        document.getElementById('vote-list').innerHTML = db.votes.map((v, i) => `
+            <div class="bento" style="border-color:var(--pink)">
+                <div class="bento-header"><span>OWNER: ${v.user}</span><span style="color:var(--pink)">VOTE SESSION</span></div>
+                <div style="font-size:2.5rem; font-family:'Archivo Black'; line-height:1; margin-bottom:15px; letter-spacing:-1px; text-transform:uppercase;">${v.title}</div>
+                <div style="font-weight:900; color:var(--pink); margin-bottom:15px; font-size:1.2rem;">BY. ${v.author}</div>
+                <p style="font-size:1.1rem; opacity:0.8; margin-bottom:25px; font-weight:500; border-left:5px solid var(--black); padding-left:15px;">${v.intro}</p>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button onclick="cast(${i})" class="btn-main" style="flex:4; background:var(--pink); padding:20px; font-size:1.2rem;">
+                        ${v.voters.includes(me)?'CANCEL VOTE':'CAST YOUR VOTE'}
+                    </button>
+                    ${v.user === me ? `<button class="btn-del" style="flex:1; padding:20px; background:none; border:2px solid var(--black); font-weight:900; cursor:pointer;" onclick="deleteVote(${i})">DEL</button>` : ''}
+                </div>
+                <div style="font-size:12px; margin-top:20px; font-weight:900; color:var(--black); background:var(--yellow); padding:10px; display:inline-block;">VOTERS: ${v.voters.length} [ ${v.voters.join(', ')} ]</div>
+            </div>`).join('');
+    }
+
+    function deleteVote(i) {
+        if(db.votes[i].user === me && confirm("VOTE 세션을 삭제하시겠습니까?")) {
+            db.votes.splice(i, 1);
+            renderVotes(); finalSave();
+        }
+    }
+
+    function cast(i) {
+        if(db.votes[i].voters.includes(me)) db.votes[i].voters = db.votes[i].voters.filter(u => u !== me);
+        else db.votes[i].voters.push(me);
+        renderVotes(); finalSave();
+    }
+
+    function saveBook() { 
+        db.book={title:document.getElementById('b-title').value, author:document.getElementById('b-author').value, cover:document.getElementById('b-cover').value}; 
+        finalSave(); renderCal(); alert("SYNCED TO DATABASE"); 
+    }
+
+    function finalSave() { localStorage.setItem('suil_v33_'+selDate, JSON.stringify(db)); }
+
+    function loadData(k) { 
+        const s=localStorage.getItem('suil_v33_'+k); 
+        db=s?JSON.parse(s):{book:{}, reviews:[], qas:[], votes:[]}; 
+        document.getElementById('b-title').value=db.book.title||''; 
+        document.getElementById('b-author').value=db.book.author||''; 
+        document.getElementById('b-cover').value=db.book.cover||''; 
+        renderAll(); 
+    }
+
+    function changeMonth(v) { curM+=v; renderCal(); }
+    
+    function toggleSec(btn, targetId) { 
+        const sec = btn.parentElement;
+        const isOpen = sec.classList.toggle('open');
+        if(isOpen) {
+            setTimeout(() => {
+                document.getElementById(targetId).scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+    }
+
+    function exportPDF() {
+        const area = document.getElementById('pdf-export-area');
+        area.innerHTML = `<h1 style="font-family:'Archivo Black';">SUIL ARCHIVE</h1><p>DATE: ${selDate}</p><hr><h2>BOOK: ${db.book.title}</h2><p>AUTHOR: ${db.book.author}</p>`;
+        html2pdf().from(area).save(`SUIL_${selDate}.pdf`);
+    }
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // 1. 제공해주신 Firebase 설정값
+  const firebaseConfig = {
+    apiKey: "AIzaSyBDjddQGsY94d1r7zCdKDDig_8ZtV2ZmBE",
+    authDomain: "suilbook.firebaseapp.com",
+    projectId: "suilbook",
+    storageBucket: "suilbook.firebasestorage.app",
+    messagingSenderId: "470231057079",
+    appId: "1:470231057079:web:c1a1a69f0b0529b4f68332",
+    measurementId: "G-VWPW6YNBNL"
+  };
+
+  // 2. Firebase 초기화
+  const app = initializeApp(firebaseConfig);
+  const firestore = getFirestore(app);
+
+  // 전역 변수로 할당하여 기존 함수에서 접근 가능하게 설정 (선택 사항)
+  window.db_firestore = firestore;
+  
+  console.log("Firebase가 성공적으로 연결되었습니다.");
+</script>
+</script>
+</body>
+</html>
