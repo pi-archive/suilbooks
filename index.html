@@ -475,13 +475,70 @@ async function saveBook() {
         area.innerHTML = `<h1 style="font-family:'Archivo Black';">SUIL ARCHIVE</h1><p>DATE: ${selDate}</p><hr><h2>BOOK: ${db.book.title}</h2><p>AUTHOR: ${db.book.author}</p>`;
         html2pdf().from(area).save(`SUIL_${selDate}.pdf`);
     }
+
+async function renderLibrary() {
+    const lib = document.getElementById('library-view');
+    // 로딩 메시지 표시
+    lib.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 100px; font-weight:900; font-family:Archiv Black;">LOADING SHELF...</div>';
+    
+    try {
+        // window 객체에 등록된 Firebase 함수를 사용하여 데이터 호출
+        const querySnapshot = await window.getDocs(window.collection(window.db_firestore, "archive"));
+        let items = [];
+        
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            // 책 표지가 있는 것만 수집
+            if (data && data.book && data.book.cover) {
+                items.push({ key: doc.id, data: data });
+            }
+        });
+
+        // 최신 날짜순 정렬
+        items.sort((a, b) => b.key.localeCompare(a.key));
+        lib.innerHTML = ''; 
+
+        if (items.length === 0) {
+            lib.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 100px 20px;">
+                <p style="font-family:'Archivo Black'; font-size: 2rem; opacity: 0.2;">SHELF IS EMPTY</p>
+                <p style="font-size: 14px; margin-top: 20px;">CALENDAR에서 첫 번째 책을 등록해보세요!</p>
+            </div>`;
+            return;
+        }
+
+        items.forEach(itemObj => {
+            const div = document.createElement('div');
+            div.className = 'shelf-item';
+            div.innerHTML = `<img src="${itemObj.data.book.cover}" alt="book">`;
+            div.onclick = () => {
+                const rawDate = itemObj.key;
+                const dateParts = rawDate.split('-');
+                curY = parseInt(dateParts[0]);
+                curM = parseInt(dateParts[1]) - 1;
+                
+                switchTab('cal');
+                renderCal();
+                selDate = rawDate;
+                window.loadData(rawDate);
+                
+                document.getElementById('archive-view').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('sec-book').scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            };
+            lib.appendChild(div);
+        });
+    } catch (e) {
+        console.error("Library Load Error:", e);
+        lib.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 100px;">서버 연결에 실패했습니다.</div>';
+    }
+}
 </script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  // 1. Firebase 설정 (기존 설정 유지)
   const firebaseConfig = {
     apiKey: "AIzaSyBDjddQGsY94d1r7zCdKDDig_8ZtV2ZmBE",
     authDomain: "suilbook.firebaseapp.com",
@@ -495,6 +552,8 @@ async function saveBook() {
   const app = initializeApp(firebaseConfig);
   const firestore = getFirestore(app);
   window.db_firestore = firestore; // 전역 변수 등록
+window.collection = collection;
+  window.getDocs = getDocs;
 
   // 2. 전역 함수로 공유 로직 이식
   
