@@ -255,74 +255,7 @@
         }
     }
 
-    function renderLibrary() {
-        const lib = document.getElementById('library-view');
-        lib.innerHTML = '';
-        let items = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('suil_v33_')) {
-                const data = JSON.parse(localStorage.getItem(key));
-                if (data && data.book && data.book.cover) {
-                    items.push({ key: key, data: data });
-                }
-            }
-        }
-        items.sort((a, b) => b.key.localeCompare(a.key));
-        if (items.length === 0) {
-            lib.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 100px 20px; font-family: 'Archivo Black';">
-                <p style="font-size: 2rem; opacity: 0.2;">SHELF IS EMPTY</p>
-                <p style="font-size: 14px; margin-top: 20px;">CALENDAR에서 책 표지를 먼저 등록하세요.</p>
-            </div>`;
-            return;
-        }
-        items.forEach(itemObj => {
-            const div = document.createElement('div');
-            div.className = 'shelf-item';
-            div.innerHTML = `<img src="${itemObj.data.book.cover}" alt="book">`;
-            div.onclick = () => {
-                const rawDate = itemObj.key.replace('suil_v33_', '');
-                const dateParts = rawDate.split('-');
-                curY = parseInt(dateParts[0]);
-                curM = parseInt(dateParts[1]) - 1;
-                switchTab('cal');
-                renderCal();
-                selDate = rawDate;
-                loadData(rawDate);
-                document.getElementById('archive-view').style.display = 'block';
-                setTimeout(() => {
-                    document.getElementById('sec-book').scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-            };
-            lib.appendChild(div);
-        });
-    }
-
-    function renderCal() {
-        const grid = document.getElementById('cal-grid'); grid.innerHTML = '';
-        const first = new Date(curY, curM, 1).getDay();
-        const last = new Date(curY, curM+1, 0).getDate();
-        document.getElementById('month-title').innerText = `${new Date(curY, curM).toLocaleString('en-US',{month:'long'})} ${curY}`;
-        for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
-        for(let i=1; i<=last; i++) {
-            const key = `${curY}-${curM+1}-${i}`;
-            const day = document.createElement('div'); day.className = 'day';
-            const saved = localStorage.getItem('suil_v33_'+key);
-            if(saved) {
-                const p = JSON.parse(saved);
-                if(p.book && p.book.cover) day.innerHTML = `<img src="${p.book.cover}">`;
-            }
-            day.innerHTML += `<span>${i}</span>`;
-            day.onclick = () => { 
-                selDate=key; 
-                loadData(key); 
-                document.getElementById('archive-view').style.display='block';
-                document.getElementById('sec-book').scrollIntoView({ behavior: 'smooth' });
-            };
-            grid.appendChild(day);
-        }
-    }
-
+ 
     function setQA(cat) { 
         curQA = cat; 
         document.getElementById('in-qa-link').style.display = cat==='추천'?'block':'none';
@@ -508,213 +441,10 @@
         renderVotes(); finalSave();
     }
 
-async function saveBook() { 
-    if(!selDate) {
-        alert("먼저 달력에서 날짜를 선택해주세요.");
-        return;
+    function saveBook() { 
+        db.book={title:document.getElementById('b-title').value, author:document.getElementById('b-author').value, cover:document.getElementById('b-cover').value}; 
+        finalSave(); renderCal(); alert("SYNCED TO DATABASE"); 
     }
-
-    const bookData = {
-        title: document.getElementById('b-title').value,
-        author: document.getElementById('b-author').value,
-        cover: document.getElementById('b-cover').value
-    };
-
-    try {
-        const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        
-        // Firestore의 'books' 컬렉션에 날짜를 문서 ID로 저장
-        await setDoc(doc(window.db_firestore, "books", selDate), {
-            book: bookData,
-            reviews: db.reviews || [],
-            qas: db.qas || [],
-            votes: db.votes || [],
-            lastUpdated: new Date()
-        }, { merge: true }); // 기존 데이터(리뷰 등)를 유지하며 덮어쓰기
-
-        db.book = bookData;
-        finalSave(); 
-        renderCal(); 
-        alert("서버와 동기화되었습니다. 모든 방문자가 이 책을 볼 수 있습니다."); 
-    } catch (e) {
-        console.error("저장 에러:", e);
-        alert("서버 저장 실패: 파이어베이스 Rules 설정을 확인하세요.");
-    }
-}
-
-// [수정] 최종 저장 함수 - 키값 생성 방식 명확화
-function finalSave() { 
-    if(selDate) {
-        // 'suil_v33_2026-3-21' 형태의 키로 저장
-        localStorage.setItem('suil_v33_' + selDate, JSON.stringify(db)); 
-        console.log("Saved Key:", 'suil_v33_' + selDate, db);
-    } else {
-        console.error("Save Failed: No date selected.");
-    }
-}
-
-async function loadData(k) { 
-    selDate = k;
-    
-    try {
-        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        const docSnap = await getDoc(doc(window.db_firestore, "books", k));
-
-        if (docSnap.exists()) {
-            // 서버에 데이터가 있으면 서버 데이터를 현재 db 객체에 할당
-            db = docSnap.data();
-        } else {
-            // 서버에 데이터가 없으면 초기화
-            db = { book: {}, reviews: [], qas: [], votes: [] }; 
-        }
-    } catch (e) {
-        console.error("불러오기 에러:", e);
-    }
-
-    // UI 업데이트
-    document.getElementById('b-title').value = db.book.title || ''; 
-    document.getElementById('b-author').value = db.book.author || ''; 
-    document.getElementById('b-cover').value = db.book.cover || ''; 
-    renderAll(); 
-}
-// [수정] 도서 정보 저장 - 날짜 미선택 방어 로직 추가
-async function saveBook() { 
-    if(!selDate) {
-        alert("먼저 달력에서 날짜를 선택해주세요.");
-        return;
-    }
-
-    const bookData = {
-        title: document.getElementById('b-title').value,
-        author: document.getElementById('b-author').value,
-        cover: document.getElementById('b-cover').value
-    };
-
-    try {
-        const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        
-        // Firestore의 'books' 컬렉션에 날짜를 문서 ID로 저장
-        await setDoc(doc(window.db_firestore, "books", selDate), {
-            book: bookData,
-            reviews: db.reviews || [],
-            qas: db.qas || [],
-            votes: db.votes || [],
-            lastUpdated: new Date()
-        }, { merge: true }); // 기존 데이터(리뷰 등)를 유지하며 덮어쓰기
-
-        db.book = bookData;
-        finalSave(); 
-        renderCal(); 
-        alert("서버와 동기화되었습니다. 모든 방문자가 이 책을 볼 수 있습니다."); 
-    } catch (e) {
-        console.error("저장 에러:", e);
-        alert("서버 저장 실패: 파이어베이스 Rules 설정을 확인하세요.");
-    }
-}
-// [수정] 최종 저장 함수 - 키값 생성 방식 명확화
-function finalSave() { 
-    if(selDate) {
-        // 'suil_v33_2026-3-21' 형태의 키로 저장
-        localStorage.setItem('suil_v33_' + selDate, JSON.stringify(db)); 
-        console.log("Saved Key:", 'suil_v33_' + selDate, db);
-    } else {
-        console.error("Save Failed: No date selected.");
-    }
-}
-
-// [수정] 데이터 로드 함수 - 초기화 로직 보강
-function loadData(k) { 
-    selDate = k; // 선택된 날짜 전역 변수 동기화
-    const s = localStorage.getItem('suil_v33_' + k); 
-    
-    // 데이터가 있으면 불러오고, 없으면 깨끗한 객체로 초기화
-    db = s ? JSON.parse(s) : { book: {}, reviews: [], qas: [], votes: [] }; 
-    
-    // 화면 입력창 업데이트
-    document.getElementById('b-title').value = db.book.title || ''; 
-    document.getElementById('b-author').value = db.book.author || ''; 
-    document.getElementById('b-cover').value = db.book.cover || ''; 
-    
-    renderAll(); 
-}
-async function saveBook() { 
-    if(!selDate) {
-        alert("먼저 달력에서 날짜를 선택해주세요.");
-        return;
-    }
-
-    const bookData = {
-        title: document.getElementById('b-title').value,
-        author: document.getElementById('b-author').value,
-        cover: document.getElementById('b-cover').value
-    };
-
-    try {
-        const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        
-        // Firestore의 'books' 컬렉션에 날짜를 문서 ID로 저장
-        await setDoc(doc(window.db_firestore, "books", selDate), {
-            book: bookData,
-            reviews: db.reviews || [],
-            qas: db.qas || [],
-            votes: db.votes || [],
-            lastUpdated: new Date()
-        }, { merge: true }); // 기존 데이터(리뷰 등)를 유지하며 덮어쓰기
-
-        db.book = bookData;
-        finalSave(); 
-        renderCal(); 
-        alert("서버와 동기화되었습니다. 모든 방문자가 이 책을 볼 수 있습니다."); 
-    } catch (e) {
-        console.error("저장 에러:", e);
-        alert("서버 저장 실패: 파이어베이스 Rules 설정을 확인하세요.");
-    }
-}
-    
-    // 로컬스토리지에 물리적 저장 실행
-    finalSave(); 
-    
-    // 달력 UI 새로고침 (이미지 즉시 반영)
-    renderCal(); 
-    
-    alert("SUCCESS: [" + selDate + "] 데이터가 저장되었습니다."); 
-}
-
-// [수정] 최종 저장 함수 - 키값 생성 방식 명확화
-function finalSave() { 
-    if(selDate) {
-        // 'suil_v33_2026-3-21' 형태의 키로 저장
-        localStorage.setItem('suil_v33_' + selDate, JSON.stringify(db)); 
-        console.log("Saved Key:", 'suil_v33_' + selDate, db);
-    } else {
-        console.error("Save Failed: No date selected.");
-    }
-}
-
-async function loadData(k) { 
-    selDate = k;
-    
-    try {
-        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        const docSnap = await getDoc(doc(window.db_firestore, "books", k));
-
-        if (docSnap.exists()) {
-            // 서버에 데이터가 있으면 서버 데이터를 현재 db 객체에 할당
-            db = docSnap.data();
-        } else {
-            // 서버에 데이터가 없으면 초기화
-            db = { book: {}, reviews: [], qas: [], votes: [] }; 
-        }
-    } catch (e) {
-        console.error("불러오기 에러:", e);
-    }
-
-    // UI 업데이트
-    document.getElementById('b-title').value = db.book.title || ''; 
-    document.getElementById('b-author').value = db.book.author || ''; 
-    document.getElementById('b-cover').value = db.book.cover || ''; 
-    renderAll(); 
-}
 
     function changeMonth(v) { curM+=v; renderCal(); }
     
@@ -734,64 +464,93 @@ async function loadData(k) {
         html2pdf().from(area).save(`SUIL_${selDate}.pdf`);
     }
 </script>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+  // 1. Firebase 설정 (기존 설정 유지)
   const firebaseConfig = {
     apiKey: "AIzaSyBDjddQGsY94d1r7zCdKDDig_8ZtV2ZmBE",
     authDomain: "suilbook.firebaseapp.com",
     projectId: "suilbook",
-    storageBucket: "suilbook.appspot.com",
-    messagingSenderId: "367123992285",
-    appId: "1:367123992285:web:583597be6a17b8f9780829"
+    storageBucket: "suilbook.firebasestorage.app",
+    messagingSenderId: "470231057079",
+    appId: "1:470231057079:web:c1a1a69f0b0529b4f68332",
+    measurementId: "G-VWPW6YNBNL"
   };
 
   const app = initializeApp(firebaseConfig);
-  window.db_firestore = getFirestore(app);
+  const firestore = getFirestore(app);
+  window.db_firestore = firestore; // 전역 변수 등록
 
-  // [핵심] 입장을 담당하는 함수를 window 객체에 등록 (버튼 클릭용)
-  window.startApp = function() {
-      const nameInput = document.getElementById('user-name');
-      const name = nameInput.value.trim();
-      
-      if(!name) {
-          alert("PLEASE ENTER YOUR NAME.");
-          return;
-      }
-      
-      userName = name; // 전역 변수에 저장
-      document.getElementById('intro-screen').classList.remove('active');
-      renderCal(); // 메인 페이지(달력) 그리기
+  // 2. 전역 함수로 공유 로직 이식
+  
+  // [데이터 저장] LocalStorage 대신 Firestore에 저장
+  window.finalSave = async function() {
+    if (!selDate) return;
+    try {
+      await setDoc(doc(window.db_firestore, "archive", selDate), db);
+      console.log("Firestore Sync Success!");
+    } catch (e) {
+      console.error("Error saving document: ", e);
+    }
   };
 
-  // [추가] 엔터 키를 눌렀을 때도 실행되도록 설정
-  document.getElementById('user-name').addEventListener('keypress', function (e) {
-      if (e.key === 'Enter') {
-          window.startApp();
-      }
-  });
+  // [데이터 불러오기] 날짜 클릭 시 실시간 리스너 연결
+  let unsubscribe = null; // 이전 리스너 해제용
+  window.loadData = function(k) {
+    if (unsubscribe) unsubscribe(); // 기존 감시 해제
 
-  // 나머지 Firebase 함수들도 전역으로 등록해야 작동합니다.
-  window.loadData = async function(k) {
-      selDate = k;
-      document.getElementById('editor-view').classList.add('active');
-      try {
-          const docSnap = await getDoc(doc(window.db_firestore, "books", k));
-          if (docSnap.exists()) { db = docSnap.data(); } 
-          else { db = { book: {}, reviews: [], qas: [], votes: [] }; }
-      } catch (e) { console.error(e); }
+    unsubscribe = onSnapshot(doc(window.db_firestore, "archive", k), (docSnap) => {
+      if (docSnap.exists()) {
+        db = docSnap.data();
+      } else {
+        db = { book: {}, reviews: [], qas: [], votes: [] };
+      }
+      
+      // UI 업데이트 (기존 render 함수들 호출)
+      document.getElementById('b-title').value = db.book.title || '';
+      document.getElementById('b-author').value = db.book.author || '';
+      document.getElementById('b-cover').value = db.book.cover || '';
       renderAll();
+    });
   };
 
-  window.saveBook = async function() {
-      if(!selDate) return;
-      try {
-          await setDoc(doc(window.db_firestore, "books", selDate), db, { merge: true });
-          renderCal();
-          alert("SYNCED!");
-      } catch (e) { alert("FAILED!"); }
+  // [캘린더 초기화] 저장된 데이터가 있는 날짜에 사진 표시
+  window.renderCal = async function() {
+    const grid = document.getElementById('cal-grid'); 
+    grid.innerHTML = '';
+    const first = new Date(curY, curM, 1).getDay();
+    const last = new Date(curY, curM+1, 0).getDate();
+    document.getElementById('month-title').innerText = `${new Date(curY, curM).toLocaleString('en-US',{month:'long'})} ${curY}`;
+
+    // 전체 데이터를 한 번 가져와서 캘린더에 뿌림 (성능 최적화는 추후 고려)
+    const querySnapshot = await getDocs(collection(window.db_firestore, "archive"));
+    const allData = {};
+    querySnapshot.forEach((doc) => { allData[doc.id] = doc.data(); });
+
+    for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
+    for(let i=1; i<=last; i++) {
+        const key = `${curY}-${curM+1}-${i}`;
+        const day = document.createElement('div'); day.className = 'day';
+        
+        if(allData[key] && allData[key].book && allData[key].book.cover) {
+            day.innerHTML = `<img src="${allData[key].book.cover}">`;
+        }
+        
+        day.innerHTML += `<span>${i}</span>`;
+        day.onclick = () => { 
+            selDate = key; 
+            window.loadData(key); 
+            document.getElementById('archive-view').style.display='block';
+            document.getElementById('sec-book').scrollIntoView({ behavior: 'smooth' });
+        };
+        grid.appendChild(day);
+    }
   };
+
+  console.log("Firebase 리얼타임 엔진 이식 완료");
 </script>
 </body>
 </html>
