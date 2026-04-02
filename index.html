@@ -441,10 +441,22 @@
         renderVotes(); finalSave();
     }
 
-    function saveBook() { 
-        db.book={title:document.getElementById('b-title').value, author:document.getElementById('b-author').value, cover:document.getElementById('b-cover').value}; 
-        finalSave(); renderCal(); alert("SYNCED TO DATABASE"); 
-    }
+// 기존 saveBook을 아래 내용으로 교체
+async function saveBook() { 
+    // 1. 입력값 반영
+    db.book = {
+        title: document.getElementById('b-title').value, 
+        author: document.getElementById('b-author').value, 
+        cover: document.getElementById('b-cover').value
+    }; 
+    
+    // 2. 서버(Firebase) 저장 실행
+    await window.finalSave(); 
+    
+    // 3. UI 업데이트
+    renderCal(); 
+    alert("SYNCED TO DATABASE (SHARED)"); 
+}
 
     function changeMonth(v) { curM+=v; renderCal(); }
     
@@ -488,14 +500,19 @@
   
   // [데이터 저장] LocalStorage 대신 Firestore에 저장
   window.finalSave = async function() {
-    if (!selDate) return;
-    try {
-      await setDoc(doc(window.db_firestore, "archive", selDate), db);
-      console.log("Firestore Sync Success!");
-    } catch (e) {
-      console.error("Error saving document: ", e);
+if (!selDate) {
+        alert("날짜를 먼저 선택해주세요!");
+        return;
     }
-  };
+    try {
+        const docRef = doc(window.db_firestore, "archive", selDate);
+        await setDoc(docRef, db);
+        console.log("실시간 DB 저장 성공:", selDate);
+    } catch (e) {
+        console.error("저장 실패:", e);
+        alert("저장 중 오류가 발생했습니다.");
+    }
+};
 
   // [데이터 불러오기] 날짜 클릭 시 실시간 리스너 연결
   let unsubscribe = null; // 이전 리스너 해제용
