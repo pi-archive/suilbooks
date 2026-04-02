@@ -622,30 +622,22 @@ function finalSave() {
     }
 }
 
-async function loadData(k) { 
-    selDate = k;
+// [수정] 데이터 로드 함수 - 초기화 로직 보강
+function loadData(k) { 
+    selDate = k; // 선택된 날짜 전역 변수 동기화
+    const s = localStorage.getItem('suil_v33_' + k); 
     
-    try {
-        const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        const docSnap = await getDoc(doc(window.db_firestore, "books", k));
-
-        if (docSnap.exists()) {
-            // 서버에 데이터가 있으면 서버 데이터를 현재 db 객체에 할당
-            db = docSnap.data();
-        } else {
-            // 서버에 데이터가 없으면 초기화
-            db = { book: {}, reviews: [], qas: [], votes: [] }; 
-        }
-    } catch (e) {
-        console.error("불러오기 에러:", e);
-    }
-
-    // UI 업데이트
+    // 데이터가 있으면 불러오고, 없으면 깨끗한 객체로 초기화
+    db = s ? JSON.parse(s) : { book: {}, reviews: [], qas: [], votes: [] }; 
+    
+    // 화면 입력창 업데이트
     document.getElementById('b-title').value = db.book.title || ''; 
     document.getElementById('b-author').value = db.book.author || ''; 
     document.getElementById('b-cover').value = db.book.cover || ''; 
+    
     renderAll(); 
-}async function saveBook() { 
+}
+async function saveBook() { 
     if(!selDate) {
         alert("먼저 달력에서 날짜를 선택해주세요.");
         return;
@@ -742,26 +734,74 @@ async function loadData(k) {
         html2pdf().from(area).save(`SUIL_${selDate}.pdf`);
     }
 </script>
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBDjddQGsY94d1r7zCdKDDig_8ZtV2ZmBE",
     authDomain: "suilbook.firebaseapp.com",
     projectId: "suilbook",
-    storageBucket: "suilbook.firebasestorage.app",
-    messagingSenderId: "470231057079",
-    appId: "1:470231057079:web:c1a1a69f0b0529b4f68332",
-    measurementId: "G-VWPW6YNBNL"
+    storageBucket: "suilbook.appspot.com",
+    messagingSenderId: "367123992285",
+    appId: "1:367123992285:web:583597be6a17b8f9780829"
   };
 
   const app = initializeApp(firebaseConfig);
-  const firestore = getFirestore(app);
-  window.db_firestore = firestore;
+  // 전역 변수로 설정하여 다른 함수들이 사용할 수 있게 함
+  window.db_firestore = getFirestore(app);
+
+  // --- [중요] 입장 버튼 함수를 전역으로 공개 ---
+  window.startApp = function() {
+      const name = document.getElementById('user-name').value.trim();
+      if(!name) {
+          alert("PLEASE ENTER YOUR NAME.");
+          return;
+      }
+      userName = name;
+      document.getElementById('intro-screen').classList.remove('active');
+      renderCal(); // 입장 시 달력 렌더링
+  };
   
-  console.log("Firebase가 성공적으로 연결되었습니다.");
+  // 나머지 Firebase 관련 함수들도 전역으로 등록 (기존 함수가 있다면 대체)
+  window.loadData = async function(k) {
+      selDate = k;
+      document.getElementById('editor-view').classList.add('active');
+      
+      try {
+          const docSnap = await getDoc(doc(window.db_firestore, "books", k));
+          if (docSnap.exists()) {
+              db = docSnap.data();
+          } else {
+              db = { book: {}, reviews: [], qas: [], votes: [] };
+          }
+      } catch (e) {
+          console.error("Load Error:", e);
+      }
+      renderAll();
+  };
+
+  window.saveBook = async function() {
+      if(!selDate) return;
+      const bookData = {
+          title: document.getElementById('b-title').value,
+          author: document.getElementById('b-author').value,
+          cover: document.getElementById('b-cover').value
+      };
+      try {
+          await setDoc(doc(window.db_firestore, "books", selDate), {
+              book: bookData,
+              reviews: db.reviews || [],
+              qas: db.qas || [],
+              votes: db.votes || []
+          }, { merge: true });
+          db.book = bookData;
+          renderCal();
+          alert("SAVED TO CLOUD!");
+      } catch (e) {
+          alert("SAVE FAILED!");
+      }
+  };
 </script>
 </body>
 </html>
