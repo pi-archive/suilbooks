@@ -748,59 +748,49 @@ async function loadData(k) {
   };
 
   const app = initializeApp(firebaseConfig);
-  // 전역 변수로 설정하여 다른 함수들이 사용할 수 있게 함
   window.db_firestore = getFirestore(app);
 
-  // --- [중요] 입장 버튼 함수를 전역으로 공개 ---
+  // [핵심] 입장을 담당하는 함수를 window 객체에 등록 (버튼 클릭용)
   window.startApp = function() {
-      const name = document.getElementById('user-name').value.trim();
+      const nameInput = document.getElementById('user-name');
+      const name = nameInput.value.trim();
+      
       if(!name) {
           alert("PLEASE ENTER YOUR NAME.");
           return;
       }
-      userName = name;
+      
+      userName = name; // 전역 변수에 저장
       document.getElementById('intro-screen').classList.remove('active');
-      renderCal(); // 입장 시 달력 렌더링
+      renderCal(); // 메인 페이지(달력) 그리기
   };
-  
-  // 나머지 Firebase 관련 함수들도 전역으로 등록 (기존 함수가 있다면 대체)
+
+  // [추가] 엔터 키를 눌렀을 때도 실행되도록 설정
+  document.getElementById('user-name').addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+          window.startApp();
+      }
+  });
+
+  // 나머지 Firebase 함수들도 전역으로 등록해야 작동합니다.
   window.loadData = async function(k) {
       selDate = k;
       document.getElementById('editor-view').classList.add('active');
-      
       try {
           const docSnap = await getDoc(doc(window.db_firestore, "books", k));
-          if (docSnap.exists()) {
-              db = docSnap.data();
-          } else {
-              db = { book: {}, reviews: [], qas: [], votes: [] };
-          }
-      } catch (e) {
-          console.error("Load Error:", e);
-      }
+          if (docSnap.exists()) { db = docSnap.data(); } 
+          else { db = { book: {}, reviews: [], qas: [], votes: [] }; }
+      } catch (e) { console.error(e); }
       renderAll();
   };
 
   window.saveBook = async function() {
       if(!selDate) return;
-      const bookData = {
-          title: document.getElementById('b-title').value,
-          author: document.getElementById('b-author').value,
-          cover: document.getElementById('b-cover').value
-      };
       try {
-          await setDoc(doc(window.db_firestore, "books", selDate), {
-              book: bookData,
-              reviews: db.reviews || [],
-              qas: db.qas || [],
-              votes: db.votes || []
-          }, { merge: true });
-          db.book = bookData;
+          await setDoc(doc(window.db_firestore, "books", selDate), db, { merge: true });
           renderCal();
-          alert("SAVED TO CLOUD!");
-      } catch (e) {
-          alert("SAVE FAILED!");
-      }
+          alert("SYNCED!");
+      } catch (e) { alert("FAILED!"); }
   };
 </script>
 </body>
